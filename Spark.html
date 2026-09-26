@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Gas - Enterprise Operations Platform</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Nova Gas Theme Colors */
+            --primary: #f97316; /* Flame Orange */
+            --primary-hover: #ea580c;
+            --primary-light: #fff7ed;
+            --secondary: #0ea5e9; /* Gas Blue */
+            --bg-main: #f8f9fc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            
+            /* Code snippet & Tag colors */
+            --code-bg: #f8fafc;
+            --code-keyword: #2563eb;
+            --code-string: #16a34a;
+            --code-text: #475569;
+            --tag-blue-bg: #e0f2fe; --tag-blue-text: #0284c7;
+            --tag-purple-bg: #f3e8ff; --tag-purple-text: #7e22ce;
+            --tag-orange-bg: #ffedd5; --tag-orange-text: #ea580c;
+            --tag-pink-bg: #fce7f3; --tag-pink-text: #db2777;
+            --tag-gray-bg: #f3f4f6; --tag-gray-text: #4b5563;
+            
+            /* Layout Widths */
+            --global-sidebar-width: 260px;
+            --global-sidebar-collapsed: 80px;
+            --ai-sidebar-width: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; width: 100vw; overflow: hidden; font-size: 14px; }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Presentation Tooltip */
+        .presentation-tooltip {
+            position: absolute; background: rgba(15, 23, 42, 0.95); color: #ffffff; padding: 10px 14px;
+            border-radius: 8px; font-size: 13px; line-height: 1.4; pointer-events: none; z-index: 9999;
+            opacity: 0; transition: opacity 0.15s ease-in-out; max-width: 280px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); font-weight: 500; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .presentation-tooltip.visible { opacity: 1; }
+        .explain-element { transition: all 0.2s ease-in-out; cursor: help; position: relative; border-radius: inherit; }
+        .explain-element:hover { outline: 2px solid var(--primary); outline-offset: -2px; box-shadow: inset 0 0 0 2px rgba(249, 115, 22, 0.1); z-index: 10; }
+
+        /* SPA Layout Core */
+        .app-wrapper { display: flex; width: 100%; height: 100%; }
+        .main-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg-main); }
+        .app-view { display: none; height: 100%; width: 100%; flex-direction: column; overflow: hidden; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .app-view.active-view { display: flex; }
+        .app-view.row-view { flex-direction: row; }
+        .page-content-scroll { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column;}
+
+        /* Global Sidebar */
+        .global-sidebar {
+            width: var(--global-sidebar-width); background-color: var(--bg-card); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; overflow-x: hidden;
+        }
+        .global-sidebar.collapsed { width: var(--global-sidebar-collapsed); padding: 24px 12px; }
+        .logo-container { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; padding-left: 8px; white-space: nowrap; }
+        .logo-icon { width: 32px; height: 32px; background: conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #facc15 180deg, #0ea5e9 360deg); border-radius: 50%; flex-shrink: 0; }
+        .logo-text { font-weight: 700; font-size: 18px; line-height: 1.2; color: var(--text-dark); transition: opacity 0.2s;}
+        .logo-text span { display: block; font-size: 10px; color: var(--text-muted); font-weight: 500; }
+        .global-sidebar.collapsed .logo-text { opacity: 0; pointer-events: none; width: 0; display: none; }
+        
+        .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .nav-item { cursor: pointer; }
+        .nav-item > a {
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; text-decoration: none;
+            color: var(--text-muted); font-weight: 600; border-radius: 8px; transition: all 0.2s; white-space: nowrap;
+        }
+        .nav-item-left { display: flex; align-items: center; gap: 12px; }
+        .nav-item > a:hover { background-color: var(--bg-main); color: var(--text-dark); }
+        .nav-item.active > a { background-color: var(--primary-light); color: var(--primary); }
+        .nav-item-icon { width: 24px; text-align: center; font-size: 16px; }
+        .nav-item-text { transition: opacity 0.2s; }
+        
+        /* Sub Menu for Platform */
+        .sub-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-left: 44px; padding-left: 12px; border-left: 1px solid var(--border); margin-top: 4px; margin-bottom: 8px; }
+        .sub-item a { display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: var(--text-muted); font-weight: 500; font-size: 13px; padding: 8px 12px; border-radius: 6px; transition: all 0.2s; }
+        .sub-item a:hover { color: var(--text-dark); background: var(--bg-main); }
+        .sub-item.active a { background-color: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .sub-item.active a::after { content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
+
+        .global-sidebar.collapsed .nav-item-text, .global-sidebar.collapsed .fa-chevron-down, .global-sidebar.collapsed .sub-menu { display: none; }
+        .global-sidebar.collapsed .nav-item > a { padding: 12px; justify-content: center; }
+        
+        .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 16px; }
+        .user-profile-mini { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .global-sidebar.collapsed .user-profile-mini { padding: 8px; justify-content: center; background: transparent; border-color: transparent;}
+        .user-avatar { width: 32px; height: 32px; background-color: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .user-details { transition: opacity 0.2s; }
+        .user-details h5 { font-size: 13px; color: var(--text-dark); }
+        .user-details p { font-size: 11px; color: var(--text-muted); }
+        .global-sidebar.collapsed .user-details { display: none; }
+        .collapse-btn { display: flex; align-items: center; gap: 8px; color: var(--text-muted); background: none; border: none; padding: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; white-space: nowrap; }
+        .collapse-btn:hover { color: var(--text-dark); }
+        .global-sidebar.collapsed .collapse-text { display: none; }
+        .global-sidebar.collapsed .collapse-btn { justify-content: center; }
+
+        /* Shared Components */
+        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; background: var(--bg-card); border-bottom: 1px solid var(--border); z-index: 10; flex-shrink: 0; }
+        .catalog-selector { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 13px; color: var(--text-dark); }
+        .dropdown-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 20px; font-size: 13px; cursor: pointer; color: var(--text-main); font-weight: 600; transition: border-color 0.2s; }
+        .dropdown-btn:hover { border-color: var(--primary); }
+        .dropdown-btn i.fa-globe { color: var(--secondary); }
+        .btn-new-session { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s; }
+        .btn-new-session:hover { background: var(--primary-hover); }
+        .btn-outline-header { background: white; border: 1px solid #fed7aa; color: var(--primary); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-outline-header:hover { background: var(--primary-light); }
+        .page-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+        .page-title h1 { font-size: 24px; color: var(--text-dark); display: flex; align-items: center; gap: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: -0.5px;}
+        .page-title p { color: var(--text-muted); font-size: 14px; font-weight: 500;}
+        .count-badge { background: var(--primary-light); color: var(--primary); font-size: 13px; padding: 2px 10px; border-radius: 12px; font-weight: 600; margin-left: 8px;}
+
+        /* --- HOME VIEW SPECIFICS --- */
+        .top-banner { background-color: var(--primary-light); display: flex; justify-content: center; align-items: center; padding: 12px; gap: 15px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--primary); font-weight: 600; flex-shrink:0;}
+        .top-banner button { background: white; border: 1px solid var(--primary); color: var(--primary); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .header-icons { display: flex; gap: 16px; color: var(--text-muted); font-size: 18px; }
+        .user-profile { display: flex; align-items: center; gap: 12px; background: white; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; }
+        .user-profile .user-avatar { width: 24px; height: 24px; font-size: 12px;}
+        .welcome-section { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+        .welcome-text h1 { font-size: 32px; margin-bottom: 8px; color: black; }
+        .welcome-text p { color: var(--text-muted); margin-bottom: 24px; }
+        .search-bar { position: relative; width: 100%; max-width: 450px; }
+        .search-bar input { width: 100%; padding: 12px 16px 12px 40px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; }
+        .search-bar i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .search-bar .shortcut { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--text-muted); border: 1px solid var(--border); }
+        .system-overview { background: white; border-radius: 16px; padding: 20px; border: 1px solid var(--border); }
+        .system-overview h3 { font-size: 12px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 16px; }
+        .stats-grid { display: flex; justify-content: space-between; align-items: center; }
+        .stat-item { display: flex; align-items: flex-start; gap: 12px; }
+        .stat-icon { font-size: 20px; } .stat-icon.blue { color: #0ea5e9; } .stat-icon.green { color: var(--success); } .stat-icon.orange { color: var(--warning); } .stat-icon.brand { color: var(--primary); }
+        .stat-content h2 { font-size: 24px; margin-bottom: 2px; } .stat-content p { font-size: 12px; color: var(--text-muted); } .stat-content .sub { font-size: 11px; margin-top: 4px; }
+        .action-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+        .action-card { background: white; border-radius: 16px; padding: 24px; border: 1px solid var(--border); display: flex; gap: 16px; }
+        .action-icon-placeholder { width: 80px; height: 80px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+        .action-details h3 { font-size: 16px; margin-bottom: 8px; } .action-details p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
+        .btn-primary { background: var(--primary); color: white; } .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); } .btn-outline-orange { background: transparent; border: 1px solid var(--warning); color: var(--warning); }
+        .bottom-section { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+        .list-card { background: white; border-radius: 16px; padding: 24px; border: 1px solid var(--border); }
+        .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; } .list-header h3 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .view-all { color: var(--primary); font-size: 13px; text-decoration: none; font-weight: 500; }
+        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--bg-main); } .list-item:last-child { border-bottom: none; }
+        .item-left { display: flex; align-items: center; gap: 12px; }
+        .item-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bg-main); } .item-icon.success { color: var(--success); } .item-icon.warning { color: var(--warning); }
+        .item-info h4 { font-size: 14px; margin-bottom: 2px; } .item-info p { font-size: 12px; color: var(--text-muted); }
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; } .badge.success { background: var(--success-bg); color: var(--success); } .badge.warning { background: var(--warning-bg); color: var(--warning); }
+        .health-status { display: flex; align-items: center; gap: 6px; font-size: 13px; } .status-dot { width: 8px; height: 8px; border-radius: 50%; } .status-dot.healthy { background: var(--success); } .status-dot.warning { background: var(--warning); }
+        .uptime { text-align: right; } .uptime h4 { font-size: 14px; } .uptime p { font-size: 12px; color: var(--text-muted); }
+
+        /* --- AI ANALYST SPECIFICS --- */
+        .ai-sidebar { width: var(--ai-sidebar-width); border-right: 1px solid var(--border); background: var(--bg-card); flex-shrink: 0; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease; overflow: hidden; }
+        .ai-sidebar.collapsed { width: 0; border-right: none; opacity: 0; }
+        .ai-sidebar-inner { width: var(--ai-sidebar-width); height: 100%; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px 16px; display: flex; align-items: center; justify-content: space-between; }
+        .sidebar-header-icons { display: flex; gap: 16px; color: var(--text-muted); margin-left: 16px; cursor: pointer; }
+        .filter-section { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 16px; border-bottom: 1px solid var(--border); }
+        .filter-group { display: flex; align-items: flex-end; gap: 12px; } .filter-dropdown-wrapper { flex: 1; }
+        .filter-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+        .filter-dropdown { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; font-weight: 500; background: white; border-color: var(--border);}
+        .chat-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .chat-tab { flex: 1; text-align: center; padding: 14px 0; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; border-bottom: 2px solid transparent;}
+        .chat-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600;}
+        .suggestion-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex:1;}
+        .suggestion-item { display: flex; gap: 12px; padding: 16px; background: white; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.02);}
+        .suggestion-item i { color: var(--primary); font-size: 16px; margin-top: 2px; }
+        .suggestion-item p { font-size: 12px; line-height: 1.5; color: var(--text-main); font-weight: 500;}
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%); position: relative; min-width: 400px; }
+        .toggle-ai-btn { position: absolute; top: 20px; left: 20px; width: 36px; height: 36px; background: white; border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 50; color: var(--text-muted); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .toggle-ai-btn.collapsed i { transform: rotate(180deg); }
+        .chat-content-scroll { flex: 1; overflow-y: auto; padding: 60px 40px; display: flex; flex-direction: column; align-items: center; }
+        .greeting { font-size: 32px; color: var(--primary); font-weight: 700; margin-bottom: 12px; letter-spacing: -0.5px; text-align: center;}
+        .main-question { font-size: 24px; color: var(--text-dark); text-align: center; font-weight: 600; margin-bottom: 8px; line-height: 1.3; letter-spacing: -0.5px;}
+        .chat-feature-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 800px; width: 100%; margin-bottom: 40px; }
+        .chat-feature-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .chat-feature-card h3 { font-size: 15px; margin-bottom: 8px; color: var(--text-dark); font-weight: 600;} .chat-feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        .chat-input-wrapper { padding: 24px 40px; background: transparent; width: 100%; max-width: 900px; margin: 0 auto; }
+        .chat-input-box { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .chat-input-box input { border: none; outline: none; width: 100%; font-size: 15px; color: var(--text-dark); margin-bottom: 16px; background: transparent;}
+        .chat-input-actions { display: flex; justify-content: space-between; align-items: center; } .input-icons { display: flex; gap: 16px; color: var(--text-muted); font-size: 16px; } .btn-send { background: transparent; border: none; color: var(--primary); font-size: 18px; cursor: pointer; }
+
+        /* --- INTEGRATION HUB SPECIFICS --- */
+        .ds-row-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); border-left: 4px solid transparent; margin-bottom:16px;}
+        .ds-row-card:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.05); transform: translateY(-2px); border-left-color: var(--primary); }
+        .row-section-left { display: flex; align-items: center; gap: 16px; width: 320px; flex-shrink: 0; }
+        .ds-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .ds-title-wrap { display: flex; flex-direction: column; gap: 4px; } .ds-title-wrap h4 { font-size: 15px; color: var(--text-dark); font-weight: 600; }
+        .row-section-middle { display: flex; flex: 1; justify-content: space-between; padding: 0 40px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-width: 400px; }
+        .row-detail { display: flex; flex-direction: column; gap: 4px; } .row-detail .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; } .row-detail .value { font-size: 13px; color: var(--text-dark); font-weight: 600; }
+        .row-section-right { display: flex; align-items: center; gap: 20px; width: 250px; justify-content: flex-end; flex-shrink: 0; }
+        .status-pill { font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 12px; display: flex; align-items: center; gap: 6px; } .status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+        .status-pill.active { background: var(--success-bg); color: var(--success); } .status-pill.active::before { background: var(--success); }
+        .tag-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; width: fit-content; }
+        .tag-sql { background: var(--tag-blue-bg); color: var(--tag-blue-text); } .tag-s3 { background: var(--tag-orange-bg); color: var(--tag-orange-text); } .tag-nosql { background: var(--success-bg); color: var(--success); }
+        .btn-test { background: white; border: 1px solid var(--border); color: var(--text-dark); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-test:hover { background: var(--bg-main); color: var(--primary); border-color: var(--primary); }
+
+        /* --- CATALOG EXPLORER SPECIFICS --- */
+        .explorer-layout { flex: 1; display: flex; gap: 24px; overflow: hidden; padding-bottom: 24px; min-height: 500px;}
+        .explorer-tree-pane { width: 320px; display: flex; flex-direction: column; overflow-y: auto; padding-right: 8px; }
+        .tree-section-header { font-size: 11px; font-weight: 700; color: var(--text-dark); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; margin-top: 16px; }
+        .tree-section-header:first-child { margin-top: 0; }
+        .tree-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .tree-node-header { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--text-dark); }
+        .tree-node-header:hover { background: white; }
+        .tree-children { margin-left: 20px; border-left: 1px solid var(--border); padding-left: 12px; display: flex; flex-direction: column; gap: 2px; }
+        .tree-folder { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .tree-folder:hover { background: white; }
+        .tree-file { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-left: 16px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-main); }
+        .tree-file:hover { background: white; color: var(--primary); }
+        .tree-file.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .explorer-detail-pane { flex: 1; background: white; border: 1px dashed var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+        .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 400px; }
+        .empty-state i { font-size: 48px; color: var(--text-muted); opacity: 0.5; margin-bottom: 24px; }
+
+        /* --- DASHBOARDS SPECIFICS --- */
+        .hub-tabs { display: flex; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); width: fit-content;}
+        .hub-tab { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; background: transparent; }
+        .hub-tab.active { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2); }
+        .hub-tab:hover:not(.active) { background: var(--bg-main); }
+        .dashboard-subheader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid var(--border);}
+        .dashboard-controls-left { display: flex; align-items: center; gap: 24px; }
+        .dashboard-title { font-size: 18px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 12px; }
+        .widgets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 40px; }
+        .widget-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .widget-tag { color: var(--primary); }
+        .widget-chart-title { text-align: center; font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
+        
+        /* Dash Charts Setup */
+        .mock-bar-chart { display: flex; align-items: flex-end; justify-content: space-around; height: 220px; padding: 20px 20px 40px 40px; border-bottom: 2px solid var(--border); border-left: 2px solid var(--border); margin-bottom: 20px; position: relative; }
+        .y-axis { position: absolute; left: -10px; top: 0; bottom: 40px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .mock-bar { width: 45px; text-align: center; position: relative; border-radius: 4px 4px 0 0; transition: opacity 0.2s; cursor: pointer; }
+        .mock-bar-label { position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%) rotate(-15deg); font-size: 11px; color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+        
+        .mock-donut-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; }
+        .mock-donut-chart { width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(var(--secondary) 0% 65%, var(--primary) 65% 85%, var(--success) 85% 100%); display: flex; align-items: center; justify-content: center; border: 2px solid var(--text-dark); }
+        .mock-donut-inner { width: 110px; height: 110px; background: var(--bg-card); border-radius: 50%; border: 2px solid var(--text-dark); }
+        .mock-donut-legend { margin-top: 24px; display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .legend-color { width: 16px; height: 10px; border-radius: 2px; }
+
+        .mock-area-chart { height: 220px; padding: 20px 0px 40px 40px; border-bottom: 2px solid var(--border); border-left: 2px solid var(--border); margin-bottom: 20px; position: relative; }
+        .mock-area-chart svg { width: 100%; height: 100%; overflow: visible; }
+        .x-axis-labels { position: absolute; bottom: 10px; left: 40px; right: 0; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        
+        .mock-progress-container { display: flex; flex-direction: column; gap: 24px; height: 220px; justify-content: center; padding: 0 20px 20px 20px; }
+        .progress-item { display: flex; flex-direction: column; gap: 8px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-dark); }
+        .progress-header span:last-child { color: var(--text-muted); font-weight: 500; }
+        .progress-track { width: 100%; height: 12px; background: var(--bg-main); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        .progress-fill { height: 100%; border-radius: 6px; }
+
+        .widget-footer { margin-top: auto; border-top: 1px solid var(--border); padding-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-main); cursor: pointer; }
+        .widget-footer:hover { color: var(--primary); }
+
+        /* --- MCP HUB SPECIFICS --- */
+        .mcp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px;}
+        .mcp-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+        .mcp-card-header { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--bg-main);}
+        .mcp-card-header i { font-size: 16px; color: var(--primary); }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+        .form-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text-dark); outline: none; transition: border-color 0.2s;}
+        .form-input:focus { border-color: var(--primary); }
+        textarea.form-input { resize: vertical; min-height: 120px; }
+        .btn-mcp-save { background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: background 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: auto;}
+        .btn-mcp-save:hover { background: var(--primary-hover); }
+        .btn-mcp-outline { background: transparent; color: var(--text-dark); border: 1px solid var(--border); width: 100%; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: auto;}
+        .btn-mcp-outline:hover { background: var(--bg-main); }
+        
+        .mcp-schema-box { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 24px;}
+        .mcp-schema-title { font-size: 13px; font-weight: 700; color: var(--text-dark); margin-bottom: 4px; }
+        .mcp-schema-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+        .mcp-tools-list { list-style: none; display: flex; flex-direction: column; gap: 8px; font-family: 'Consolas', monospace; font-size: 12px; color: var(--success); font-weight: 600;}
+        .mcp-tools-list li::before { content: "•"; margin-right: 8px; }
+        
+        .driver-list-header { font-size: 11px; font-weight: 700; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .driver-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;}
+        .driver-item:hover { border-color: var(--primary); }
+        .driver-info h4 { font-size: 13px; color: var(--text-dark); font-weight: 600; margin-bottom: 4px;}
+        .driver-info p { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;}
+        .driver-status { width: 8px; height: 8px; background: var(--success); border-radius: 50%; }
+
+        .mcp-bottom-header { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+        .mcp-bottom-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px;}
+        .mcp-bottom-title i { color: var(--primary); }
+        .mcp-bottom-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        .btn-add-server { background: white; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text-dark); cursor: pointer; transition: background 0.2s;}
+        .btn-add-server:hover { background: var(--bg-main); }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        
+        <!-- --- GLOBAL SIDEBAR --- -->
+        <aside class="global-sidebar" id="globalSidebar">
+            <div class="logo-container explain-element" data-info="Nova Gas Platform Logo">
+                <div class="logo-icon"></div>
+                <div class="logo-text">NOVA GAS<span>ENERGY DISTRIBUTION</span></div>
+            </div>
+
+            <ul class="nav-menu">
+                <!-- Nav Items mapping to Views -->
+                <li class="nav-item" data-target="view-home">
+                    <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-house"></i></div> <span class="nav-item-text">Home Dashboard</span></div></a>
+                </li>
+                <li class="nav-item" data-target="view-ai">
+                    <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-fire-flame-curved"></i></div> <span class="nav-item-text">SparkAI Analyst</span></div></a>
+                </li>
+                <li class="nav-item" data-target="view-integration">
+                    <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-plug"></i></div> <span class="nav-item-text">Integration Hub</span></div></a>
+                </li>
+                <li class="nav-item" data-target="view-catalog">
+                    <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-layer-group"></i></div> <span class="nav-item-text">Data Catalog</span></div></a>
+                </li>
+                <!-- Saved Reports Removed from Sidebar per request -->
+                <li class="nav-item" data-target="view-dashboards">
+                    <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-desktop"></i></div> <span class="nav-item-text">Custom Dashboards</span></div></a>
+                </li>
+                
+                <!-- Expanded Platform Menu for MCP Hub -->
+                <li class="nav-item active explain-element" data-info="Platform Settings & Integrations">
+                    <a href="#" style="cursor: default;"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-gear"></i></div> <span class="nav-item-text">Platform</span></div> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+                </li>
+                <ul class="sub-menu">
+                    <li class="sub-item active" data-target="view-mcp"><a href="#">MCP Hub</a></li>
+                    <li class="sub-item"><a href="#">Settings</a></li>
+                </ul>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-profile-mini explain-element" data-info="User Profile: Manage account, billing, and operator settings.">
+                    <div class="user-avatar">R</div>
+                    <div class="user-details">
+                        <h5>Rolex</h5>
+                        <p>Plant Manager</p>
+                    </div>
+                </div>
+                <button class="collapse-btn explain-element" data-info="Collapse Global Menu" id="collapseGlobalMenu">
+                    <i class="fa-solid fa-chevron-left" id="collapseIcon"></i> <span class="collapse-text">Collapse</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- --- MAIN CONTAINER (Holds all views) --- -->
+        <main class="main-container">
+            
+            <!-- VIEW 1: HOME DASHBOARD -->
+            <div id="view-home" class="app-view" style="overflow-y: auto;">
+                <div class="top-banner explain-element" data-info="System Alert Banner: Used to show urgent notifications like scheduled maintenance or active leak protocols.">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Scheduled pipeline maintenance for Sector 7 in 24 hours. View impact report.</span>
+                    <button>View Details</button>
+                </div>
+                <header class="top-header" style="border-bottom: none; background: transparent;">
+                    <div class="catalog-selector"></div>
+                    <div style="display:flex; gap:20px; align-items:center;">
+                        <div style="display:flex; gap:16px; color:var(--text-muted); font-size:18px;"><i class="fa-regular fa-bell"></i><i class="fa-solid fa-magnifying-glass"></i></div>
+                        <div style="display:flex; align-items:center; gap:12px; background:white; padding:6px 12px; border-radius:20px; border:1px solid var(--border); font-size:14px; font-weight:500; cursor:pointer;"><div class="user-avatar" style="width:24px; height:24px; font-size:12px;">R</div>Rolex <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i></div>
+                    </div>
+                </header>
+                <div class="page-content-scroll" style="padding-top: 0;">
+                    <div class="welcome-section">
+                        <div>
+                            <div class="welcome-text"><h1>Welcome back,<br>Rolex! 👋</h1><p>Your unified pipeline & telemetry workspace is ready.</p></div>
+                            <div class="search-bar explain-element" data-info="Omnibar Search: A powerful global search allowing operators to find specific valves, run diagnostics, or locate sensor logs instantly."><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Search pipelines, sensors, zones, maintenance logs..."><span class="shortcut">/</span></div>
+                        </div>
+                        <div class="system-overview explain-element" data-info="System Overview Widget: High-level KPI dashboard providing an immediate pulse check on active zones, sensors, and network health warnings.">
+                            <h3>Network Overview</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item"><i class="fa-solid fa-satellite-dish stat-icon blue"></i><div class="stat-content"><h2>128</h2><p>Sensors</p><p class="sub">124 Active</p></div></div>
+                                <div class="stat-item"><i class="fa-regular fa-circle-check stat-icon green"></i><div class="stat-content"><h2>24</h2><p>Zones</p><p class="sub">100% Online</p></div></div>
+                                <div class="stat-item"><i class="fa-solid fa-triangle-exclamation stat-icon orange"></i><div class="stat-content"><h2>2</h2><p>Alerts</p><p class="sub">Pressure Drop</p></div></div>
+                                <div class="stat-item"><i class="fa-solid fa-database stat-icon blue"></i><div class="stat-content"><h2>850</h2><p>TB Data</p><p class="sub">Processed</p></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="action-cards">
+                        <div class="action-card explain-element" data-info="Quick Action: Connect new IoT sensors or SCADA endpoints.">
+                            <div style="width:80px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:32px; color:var(--primary); background:var(--primary-light);"><i class="fa-solid fa-satellite-dish"></i></div>
+                            <div class="action-details"><h3>Connect Sensors</h3><p>Deploy new IoT nodes, configure SCADA endpoints, and map telemetry feeds instantly.</p><button class="btn btn-primary" onclick="document.querySelector('[data-target=\'view-integration\']').click()"><i class="fa-solid fa-plus"></i> Add Sensor</button></div>
+                        </div>
+                        <div class="action-card explain-element" data-info="Quick Action: Query gas flow and pressure using AI.">
+                            <div style="width:80px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:32px; color:#0ea5e9; background:#e0f2fe;"><i class="fa-solid fa-fire-flame-curved"></i></div>
+                            <div class="action-details"><h3>Ask SparkAI</h3><p>Ask questions across your connected pipeline data using your AI Engineering Agent.</p><button class="btn btn-outline" onclick="document.querySelector('[data-target=\'view-ai\']').click()">Open SparkAI</button></div>
+                        </div>
+                        <div class="action-card explain-element" data-info="Quick Action: Browse geographic zones and pressure lines.">
+                            <div style="width:80px;height:80px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:32px; color:#f59e0b; background:#fef3c7;"><i class="fa-regular fa-map"></i></div>
+                            <div class="action-details"><h3>Explore Network</h3><p>Browse geographic zones, pressure pipelines, and infrastructure datasets visually.</p><button class="btn" style="background:transparent; border:1px solid var(--warning); color:var(--warning);" onclick="document.querySelector('[data-target=\'view-catalog\']').click()">View Zonal Map</button></div>
+                        </div>
+                    </div>
+                    <div class="bottom-section">
+                        <div class="list-card explain-element" data-info="Recent Activity Feed">
+                            <div class="list-header"><h3><i class="fa-solid fa-clipboard-list"></i> Network Activity</h3><a href="#" class="view-all">View all</a></div>
+                            <div class="list-content">
+                                <div class="list-item"><div class="item-left"><div class="item-icon success"><i class="fa-solid fa-check"></i></div><div class="item-info"><h4>Sector 7 pressure stabilized</h4><p>Flow Control • 2 mins ago</p></div></div><span class="badge success">Optimal</span></div>
+                                <div class="list-item"><div class="item-left"><div class="item-icon success"><i class="fa-solid fa-check"></i></div><div class="item-info"><h4>Compressor Station Alpha online</h4><p>Infrastructure • 15 mins ago</p></div></div><span class="badge success">Active</span></div>
+                                <div class="list-item"><div class="item-left"><div class="item-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="item-info"><h4>Valve 42 requires inspection</h4><p>Maintenance • 1 hour ago</p></div></div><span class="badge warning">Pending</span></div>
+                            </div>
+                        </div>
+                        <div class="list-card explain-element" data-info="Real-time Infrastructure Monitoring">
+                            <div class="list-header"><h3><i class="fa-solid fa-heart-pulse"></i> Infrastructure Health</h3><a href="#" class="view-all">View all</a></div>
+                            <div class="list-content">
+                                <div class="list-item"><div class="item-left"><div class="item-icon"><i class="fa-solid fa-network-wired"></i></div><div class="item-info"><h4>SCADA Main</h4><p>Control System</p></div></div><div class="health-status"><div class="status-dot healthy"></div> Healthy</div><div class="uptime"><h4>99.9%</h4><p>Uptime</p></div></div>
+                                <div class="list-item"><div class="item-left"><div class="item-icon" style="color:#0ea5e9;"><i class="fa-solid fa-water"></i></div><div class="item-info"><h4>Flow Dynamics</h4><p>Routing Protocol</p></div></div><div class="health-status"><div class="status-dot healthy"></div> Healthy</div><div class="uptime"><h4>100%</h4><p>Uptime</p></div></div>
+                                <div class="list-item"><div class="item-left"><div class="item-icon" style="color:red;"><i class="fa-solid fa-shield-virus"></i></div><div class="item-info"><h4>Leak Detection</h4><p>Safety Monitor</p></div></div><div class="health-status"><div class="status-dot warning"></div> Warning</div><div class="uptime"><h4>98.5%</h4><p>Uptime</p></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: SparkAI Analyst (Chat) -->
+            <div id="view-ai" class="app-view row-view">
+                <aside class="ai-sidebar" id="aiSidebar">
+                    <div class="ai-sidebar-inner">
+                        <div class="sidebar-header">
+                            <button class="btn-new-chat"><i class="fas fa-plus"></i> New Query</button>
+                            <div class="sidebar-header-icons"><i class="fas fa-ellipsis-v"></i></div>
+                        </div>
+                        <div class="filter-section">
+                            <div class="filter-group">
+                                <div class="filter-dropdown-wrapper">
+                                    <span class="filter-label">AI Persona</span>
+                                    <div class="filter-dropdown">Energy Engineer <i class="fas fa-chevron-down"></i></div>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-dropdown-wrapper">
+                                    <span class="filter-label">Database</span>
+                                    <div class="filter-dropdown">telemetry_db <i class="fas fa-chevron-down"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-tabs">
+                            <div class="chat-tab active"><i class="far fa-lightbulb"></i> Suggested</div>
+                            <div class="chat-tab"><i class="far fa-clock"></i> History</div>
+                        </div>
+                        <div class="suggestion-list">
+                            <div class="suggestion-item"><i class="fas fa-fire-flame-curved"></i><p>Identify zones with abnormal pressure drops in the last 24 hours</p></div>
+                            <div class="suggestion-item"><i class="fas fa-fire-flame-curved"></i><p>Forecast peak gas demand for the upcoming winter season</p></div>
+                        </div>
+                    </div>
+                </aside>
+
+                <section class="main-chat">
+                    <button class="toggle-ai-btn explain-element" data-info="Expand/Collapse AI Context Panel" id="toggleAiSidebarBtn"><i class="fas fa-chevron-left"></i></button>
+                    
+                    <div class="chat-content-scroll">
+                        <h1 class="greeting">Welcome back,<br>Rolex! 👋</h1>
+                        <h2 class="main-question">What do you want to analyze in the<br>Northern Region Gas Consumption data?</h2>
+                        <p class="sub-text">SparkAI will analyze telemetry data on your behalf.</p>
+
+                        <div class="chat-feature-cards">
+                            <div class="chat-feature-card">
+                                <div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;background:#ffedd5;color:#f97316;"><i class="fas fa-hard-hat"></i></div>
+                                <h3>Ask anything</h3>
+                                <p>Ask questions in natural language about your network.</p>
+                            </div>
+                            <div class="chat-feature-card">
+                                <div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;background:#e0f2fe;color:#0ea5e9;"><i class="fas fa-tachometer-alt"></i></div>
+                                <h3>Monitor metrics</h3>
+                                <p>SparkAI will fetch accurate pressure and flow rates.</p>
+                            </div>
+                            <div class="chat-feature-card">
+                                <div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;background:#fee2e2;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
+                                <h3>Detect leaks</h3>
+                                <p>Automatically spot anomalies and visualize alerts.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-wrapper">
+                        <div class="chat-input-box">
+                            <input type="text" placeholder="Ask me something about the pipeline data...">
+                            <div class="chat-input-actions">
+                                <div style="display:flex;gap:16px;color:var(--text-muted);font-size:16px;">
+                                    <i class="far fa-file-alt"></i><i class="fas fa-microphone"></i><i class="fas fa-code"></i>
+                                </div>
+                                <button style="background:transparent;border:none;color:var(--primary);font-size:18px;cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                        <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">SparkAI is an AI assistant and should not be used as the sole source for critical safety decisions.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VIEW 3: Integration Hub -->
+            <div id="view-integration" class="app-view">
+                <header class="top-header">
+                    <div class="catalog-selector">ACTIVE CATALOG: <button class="dropdown-btn"><i class="fa-solid fa-globe"></i> All Regions <i class="fa-solid fa-chevron-down"></i></button></div>
+                    <button class="btn-new-session"><i class="fa-solid fa-plus"></i> New Source</button>
+                </header>
+                <div class="page-content-scroll">
+                    <div class="page-title-row">
+                        <div class="page-title">
+                            <h1><i class="fa-solid fa-plug"></i> DATA INTEGRATION HUB <span class="count-badge">3</span></h1>
+                            <p>Connect and manage structured databases, raw file storage, and streaming pipelines.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="action-bar">
+                        <div class="search-bar">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" placeholder="Search databases, buckets, topics, APIs...">
+                            <span class="shortcut">/</span>
+                        </div>
+                        <div class="filter-controls">
+                            <button class="btn-outline-header"><i class="fa-solid fa-filter"></i> Filter</button>
+                            <div class="view-toggle"><button><i class="fa-solid fa-border-all"></i></button><button class="active"><i class="fa-solid fa-list"></i></button></div>
+                        </div>
+                    </div>
+
+                    <div class="datasource-list">
+                        <div class="ds-row-card">
+                            <div class="row-section-left">
+                                <div class="ds-icon" style="color:#0ea5e9; background:#e0f2fe;"><i class="fa-solid fa-database"></i></div>
+                                <div class="ds-title-wrap"><h4>SCADA Telemetry DB</h4><span class="tag-pill tag-sql">POSTGRES</span></div>
+                            </div>
+                            <div class="row-section-middle">
+                                <div class="row-detail"><span class="label">Host</span><span class="value">db.scada.internal</span></div>
+                                <div class="row-detail"><span class="label">Tables</span><span class="value">42 Syncing</span></div>
+                            </div>
+                            <div class="row-section-right">
+                                <span class="status-pill active">Active</span><button class="btn-test">Test</button>
+                            </div>
+                        </div>
+                        <div class="ds-row-card">
+                            <div class="row-section-left">
+                                <div class="ds-icon" style="color:#ea580c; background:#ffedd5;"><i class="fa-brands fa-aws"></i></div>
+                                <div class="ds-title-wrap"><h4>Drone Inspections</h4><span class="tag-pill tag-s3">AWS S3</span></div>
+                            </div>
+                            <div class="row-section-middle">
+                                <div class="row-detail"><span class="label">Bucket</span><span class="value">nova-drone-footage</span></div>
+                                <div class="row-detail"><span class="label">Formats</span><span class="value">.mp4, .jpg</span></div>
+                            </div>
+                            <div class="row-section-right">
+                                <span class="status-pill active">Active</span><button class="btn-test">Verify</button>
+                            </div>
+                        </div>
+                        <div class="ds-row-card">
+                            <div class="row-section-left">
+                                <div class="ds-icon" style="color:#10b981; background:#d1fae5;"><i class="fa-solid fa-leaf"></i></div>
+                                <div class="ds-title-wrap"><h4>Maintenance Logs</h4><span class="tag-pill tag-nosql">MONGO DB</span></div>
+                            </div>
+                            <div class="row-section-middle">
+                                <div class="row-detail"><span class="label">Cluster</span><span class="value">maint-cluster-01</span></div>
+                                <div class="row-detail"><span class="label">Docs</span><span class="value">~14,200 JSONs</span></div>
+                            </div>
+                            <div class="row-section-right">
+                                <span class="status-pill active">Active</span><button class="btn-test">Test</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: Data Catalog -->
+            <div id="view-catalog" class="app-view">
+                <header class="top-header">
+                    <div class="catalog-selector">ACTIVE CATALOG: <button class="dropdown-btn"><i class="fa-solid fa-globe"></i> All Catalogs <i class="fa-solid fa-chevron-down"></i></button></div>
+                    <button class="btn-new-session"><i class="fa-solid fa-wand-magic-sparkles"></i> New Session</button>
+                </header>
+                <div class="page-content-scroll" style="padding-bottom: 0;">
+                    <div class="page-title-row">
+                        <div class="page-title">
+                            <h1><i class="fa-solid fa-layer-group"></i> TELEMETRY CATALOG EXPLORER</h1>
+                            <p>Explore pipeline schemas and un-structured safety documents from the metadata registry.</p>
+                        </div>
+                        <button class="btn-outline-header"><i class="fa-regular fa-clock"></i> Sync Catalog</button>
+                    </div>
+
+                    <div class="explorer-layout">
+                        <!-- Left Pane -->
+                        <div class="explorer-tree-pane">
+                            <div class="tree-section-header">PIPELINE LAKEHOUSE</div>
+                            <ul class="tree-list">
+                                <li class="tree-node">
+                                    <div class="tree-node-header"><i class="fa-solid fa-caret-down"></i> <i class="fa-solid fa-layer-group" style="color:#8b5cf6;"></i> Spaces</div>
+                                    <div class="tree-children">
+                                        <div class="tree-folder"><i class="fa-solid fa-folder" style="color:#fbbf24;"></i> Distribution Space</div>
+                                        <div class="tree-file"><i class="fa-regular fa-file-lines" style="color:#cbd5e1;"></i> tab_daily_flow</div>
+                                        <div class="tree-file"><i class="fa-regular fa-file-lines" style="color:#cbd5e1;"></i> tab_customers</div>
+                                        <div class="tree-folder" style="margin-top: 8px;"><i class="fa-solid fa-folder" style="color:#fbbf24;"></i> Safety Space</div>
+                                        <div class="tree-file active"><i class="fa-regular fa-file-lines" style="color:var(--primary);"></i> tab_leak_incidents</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="tree-section-header">PHYSICAL SOURCES</div>
+                            <ul class="tree-list">
+                                <li class="tree-node">
+                                    <div class="tree-node-header"><i class="fa-solid fa-caret-down"></i> <i class="fa-solid fa-database" style="color:var(--secondary);"></i> SCADA_metrics</div>
+                                    <div class="tree-children">
+                                        <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> sensor_nodes</div>
+                                        <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> pressure_readings</div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Right Pane -->
+                        <div class="explorer-detail-pane">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-table"></i>
+                                <h3 style="margin-bottom: 8px; color: var(--text-dark);">Schema: tab_leak_incidents</h3>
+                                <p>Select columns or sample data to view details.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 5: Custom Dashboards -->
+            <div id="view-dashboards" class="app-view">
+                <header class="top-header">
+                    <div class="catalog-selector">ACTIVE CATALOG: <button class="dropdown-btn"><i class="fa-solid fa-globe"></i> All Zones <i class="fa-solid fa-chevron-down"></i></button></div>
+                    <button class="btn-new-session"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                </header>
+                <div class="page-content-scroll">
+                    
+                    <div class="page-title-row" style="margin-bottom: 0; padding-bottom: 24px; border-bottom: none;">
+                        <div class="page-title">
+                            <h1><i class="fa-solid fa-desktop"></i> CUSTOM DASHBOARDS & CHARTS</h1>
+                            <p>Browse and instantly load your saved SparkAI Charts and custom layouts.</p>
+                        </div>
+                        <div class="hub-tabs explain-element" data-info="Toggle between AI-generated charts and saved dashboards.">
+                            <button class="hub-tab"><i class="fa-solid fa-chart-pie" style="color:var(--secondary)"></i> SparkAI Charts (147)</button>
+                            <button class="hub-tab active"><i class="fa-solid fa-display"></i> Custom Dashboards (4)</button>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-subheader">
+                        <div class="dashboard-controls-left">
+                            <div class="dashboard-title"><i class="fa-solid fa-desktop" style="color:var(--secondary)"></i> NORTHERN SECTOR ANALYSIS</div>
+                        </div>
+                        <div style="font-size:13px; font-weight:600; color:var(--text-muted);">4 Widgets Loaded</div>
+                    </div>
+
+                    <div class="widgets-grid">
+                        <div class="widget-card">
+                            <div class="widget-header"><span class="widget-tag">WIDGET #1</span><span style="color:var(--text-muted);">31/07/2026</span></div>
+                            <div class="widget-chart-title">Top 5 Zones by Pressure Drop</div>
+                            <div class="mock-bar-chart">
+                                <div class="y-axis"><span>150</span><span>100</span><span>50</span><span>0</span></div>
+                                <div class="mock-bar" style="height: 100%; background: var(--primary);"><span style="position:absolute; top:-20px; font-weight:600; font-size:11px;">145</span></div>
+                                <div class="mock-bar" style="height: 40%; background: var(--secondary);"><span style="position:absolute; top:-20px; font-weight:600; font-size:11px;">58</span></div>
+                                <div class="mock-bar" style="height: 25%; background: var(--success);"><span style="position:absolute; top:-20px; font-weight:600; font-size:11px;">36</span></div>
+                            </div>
+                            <div class="widget-footer"><i class="fa-solid fa-play"></i> Show SQL Query</div>
+                        </div>
+                        <div class="widget-card">
+                            <div class="widget-header"><span class="widget-tag">WIDGET #2</span><span style="color:var(--text-muted);">31/07/2026</span></div>
+                            <div class="widget-chart-title">Consumption by Sector</div>
+                            <div class="mock-donut-container">
+                                <div class="mock-donut-chart"><div class="mock-donut-inner"></div></div>
+                                <div class="mock-donut-legend">
+                                    <div style="display:flex;align-items:center;gap:6px;"><div class="legend-color" style="background:var(--secondary);"></div> Res</div>
+                                    <div style="display:flex;align-items:center;gap:6px;"><div class="legend-color" style="background:var(--primary);"></div> Ind</div>
+                                    <div style="display:flex;align-items:center;gap:6px;"><div class="legend-color" style="background:var(--success);"></div> Com</div>
+                                </div>
+                            </div>
+                            <div class="widget-footer"><i class="fa-solid fa-play"></i> Show SQL Query</div>
+                        </div>
+                        <div class="widget-card">
+                            <div class="widget-header"><span class="widget-tag">WIDGET #3</span><span style="color:var(--text-muted);">31/07/2026</span></div>
+                            <div class="widget-chart-title">Flow Rate 24h Trend (MMBtu)</div>
+                            <div class="mock-area-chart">
+                                <div class="y-axis" style="left:-15px;"><span>50k</span><span>25k</span><span>0</span></div>
+                                <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+                                    <path d="M0,180 L100,160 L200,120 L300,80 L400,40 L400,200 L0,200 Z" fill="rgba(14, 165, 233, 0.15)" stroke="none"></path>
+                                    <path d="M0,180 L100,160 L200,120 L300,80 L400,40" fill="none" stroke="var(--secondary)" stroke-width="4"></path>
+                                    <circle cx="400" cy="40" r="5" fill="var(--primary)" stroke="var(--primary-light)" stroke-width="2"></circle>
+                                </svg>
+                                <div class="x-axis-labels"><span>00:00</span><span>12:00</span><span>Now</span></div>
+                            </div>
+                            <div class="widget-footer"><i class="fa-solid fa-play"></i> Show SQL Query</div>
+                        </div>
+                        <div class="widget-card">
+                            <div class="widget-header"><span class="widget-tag">WIDGET #4</span><span style="color:var(--text-muted);">31/07/2026</span></div>
+                            <div class="widget-chart-title">Storage Facility Capacity</div>
+                            <div class="mock-progress-container">
+                                <div class="progress-item">
+                                    <div class="progress-header"><span>Facility Alpha</span><span>88%</span></div>
+                                    <div class="progress-track"><div class="progress-fill" style="width: 88%; background: var(--primary);"></div></div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-header"><span>Facility Beta</span><span>62%</span></div>
+                                    <div class="progress-track"><div class="progress-fill" style="width: 62%; background: var(--secondary);"></div></div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-header"><span>Facility Gamma</span><span>35%</span></div>
+                                    <div class="progress-track"><div class="progress-fill" style="width: 35%; background: var(--success);"></div></div>
+                                </div>
+                            </div>
+                            <div class="widget-footer"><i class="fa-solid fa-play"></i> Show SQL Query</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 6: MCP Hub -->
+            <div id="view-mcp" class="app-view active-view" style="opacity: 1;">
+                <header class="top-header">
+                    <div class="catalog-selector">ACTIVE CATALOG: <button class="dropdown-btn"><i class="fa-solid fa-globe"></i> All Regions <i class="fa-solid fa-chevron-down"></i></button></div>
+                    <button class="btn-outline-header"><i class="fa-solid fa-rotate"></i> Reload Connectors</button>
+                </header>
+                <div class="page-content-scroll">
+                    
+                    <div class="page-title-row">
+                        <div class="page-title">
+                            <h1><i class="fa-solid fa-microchip"></i> MODEL CONTEXT PROTOCOL (MCP) HUB</h1>
+                            <p>Configure and manage secure AI model context servers to execute external pipeline actions, alert notifications, and SCADA queries.</p>
+                        </div>
+                    </div>
+
+                    <div class="mcp-grid">
+                        
+                        <!-- Col 1: Configure Tool -->
+                        <div class="mcp-card explain-element" data-info="Configure third-party notification and ticketing bots used by SparkAI.">
+                            <div class="mcp-card-header"><i class="fa-solid fa-link"></i> CONFIGURE INCIDENT ALERT TOOL</div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Integration Name</label>
+                                <input type="text" class="form-input" value="nova-alerts">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Target Channel</label>
+                                <input type="text" class="form-input" value="#pipeline-emergencies">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bot OAuth Token (XOXB)</label>
+                                <input type="password" class="form-input" placeholder="Enter xoxb- bot token details...">
+                            </div>
+                            
+                            <button class="btn-mcp-save"><i class="fa-solid fa-check"></i> Save Slack Connector</button>
+                        </div>
+
+                        <!-- Col 2: Test Tool -->
+                        <div class="mcp-card explain-element" data-info="Trigger a manual ping through the configured MCP tool to ensure connectivity.">
+                            <div class="mcp-card-header"><i class="fa-solid fa-vial"></i> TEST NOTIFICATIONS</div>
+                            
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+                                Verify connection by posting a real-time message to your configured Slack channel through the MCP connector logic.
+                            </p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Test Alert Message</label>
+                                <textarea class="form-input">Hello from SparkAI! Manual test of pipeline emergency alert hook.</textarea>
+                            </div>
+                            
+                            <button class="btn-mcp-outline">Post Test Message</button>
+                        </div>
+
+                        <!-- Col 3: Active Tools & Drivers -->
+                        <div class="mcp-card explain-element" data-info="Live inventory of functions the AI Agent can currently execute autonomously.">
+                            <div class="mcp-card-header"><i class="fa-solid fa-layer-group"></i> ACTIVE MCP SCHEMA TOOLS</div>
+                            
+                            <div class="mcp-schema-box">
+                                <div class="mcp-schema-title">MCP Server: SparkAI Connector Agent</div>
+                                <div class="mcp-schema-sub">FastMCP Client Node Instance</div>
+                                <ul class="mcp-tools-list">
+                                    <li>query_scada_db(connector_id, sql)</li>
+                                    <li>trigger_valve_shutdown(valve_id)</li>
+                                    <li>post_emergency_alert(channel, msg)</li>
+                                    <li>get_active_maintenance_tickets()</li>
+                                    <li>ping_telemetry_sensor(node_id)</li>
+                                </ul>
+                            </div>
+
+                            <div class="driver-list-header">Registered Drivers</div>
+                            <div class="driver-item">
+                                <div class="driver-info">
+                                    <h4>nova_alerts</h4>
+                                    <p>SLACK API</p>
+                                </div>
+                                <div class="driver-status"></div>
+                            </div>
+                            <div class="driver-item">
+                                <div class="driver-info">
+                                    <h4>Nova_SCADA_Main</h4>
+                                    <p>POSTGRESQL</p>
+                                </div>
+                                <div class="driver-status"></div>
+                            </div>
+                            <div class="driver-item">
+                                <div class="driver-info">
+                                    <h4>Safety_Archive</h4>
+                                    <p>AWS S3 BUCKET</p>
+                                </div>
+                                <div class="driver-status" style="background:var(--warning);"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Bottom Server Registry Section -->
+                    <div class="mcp-bottom-header">
+                        <div>
+                            <div class="mcp-bottom-title"><i class="fa-solid fa-server"></i> MCP SERVER REGISTRIES</div>
+                            <div class="mcp-bottom-sub">Dynamically mount custom remote schemas, ticketing systems, internal documentation or DB engines.</div>
+                        </div>
+                        <button class="btn-add-server"><i class="fa-solid fa-plus"></i> Add MCP Server</button>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Tooltip Logic ---
+            const tooltip = document.createElement('div');
+            tooltip.className = 'presentation-tooltip';
+            document.body.appendChild(tooltip);
+
+            document.querySelectorAll('.explain-element').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    const infoText = el.getAttribute('data-info');
+                    if(infoText) {
+                        tooltip.innerHTML = `<strong>Feature Info:</strong><br>${infoText}`;
+                        tooltip.classList.add('visible');
+                    }
+                });
+                el.addEventListener('mousemove', (e) => {
+                    let x = e.pageX + 15, y = e.pageY + 15;
+                    if (x + 280 > window.innerWidth) x = e.pageX - 295;
+                    if (y + 100 > window.innerHeight) y = e.pageY - 100;
+                    tooltip.style.left = `${x}px`; tooltip.style.top = `${y}px`;
+                });
+                el.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+            });
+
+            // --- Sidebar Collapse ---
+            const collapseBtn = document.getElementById('collapseGlobalMenu');
+            const globalSidebar = document.getElementById('globalSidebar');
+            collapseBtn.addEventListener('click', () => {
+                globalSidebar.classList.toggle('collapsed');
+                document.getElementById('collapseIcon').classList.toggle('fa-chevron-right');
+                document.getElementById('collapseIcon').classList.toggle('fa-chevron-left');
+            });
+
+            // --- AI Sidebar Collapse ---
+            const toggleAiSidebarBtn = document.getElementById('toggleAiSidebarBtn');
+            const aiSidebar = document.getElementById('aiSidebar');
+            if (toggleAiSidebarBtn && aiSidebar) {
+                toggleAiSidebarBtn.addEventListener('click', () => {
+                    aiSidebar.classList.toggle('collapsed');
+                    toggleAiSidebarBtn.classList.toggle('collapsed');
+                });
+            }
+
+            // --- Sub-menu active state handling ---
+            const subItems = document.querySelectorAll('.sub-item');
+            subItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    subItems.forEach(s => s.classList.remove('active'));
+                    item.classList.add('active');
+                });
+            });
+
+            // --- Single Page App View Switching ---
+            const navItems = document.querySelectorAll('.nav-item[data-target], .sub-item[data-target]');
+            const views = document.querySelectorAll('.app-view');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Update Sidebar Active State
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    
+                    // If it's a sub-item, make its parent nav-item active too
+                    if(item.classList.contains('sub-item')) {
+                        item.closest('ul').previousElementSibling.classList.add('active');
+                    } else {
+                        item.classList.add('active');
+                        // Remove active from all sub-items if clicking a main nav item
+                        subItems.forEach(s => s.classList.remove('active'));
+                    }
+
+                    // Hide all views
+                    views.forEach(view => {
+                        view.style.opacity = 0;
+                        setTimeout(() => {
+                            view.classList.remove('active-view');
+                        }, 300); // Wait for fade out
+                    });
+
+                    // Show target view
+                    const targetId = item.getAttribute('data-target');
+                    const targetView = document.getElementById(targetId);
+                    
+                    if (targetView) {
+                        setTimeout(() => {
+                            targetView.classList.add('active-view');
+                            // Small delay to allow display:flex to apply before fading in
+                            setTimeout(() => {
+                                targetView.style.opacity = 1;
+                            }, 50);
+                        }, 300);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

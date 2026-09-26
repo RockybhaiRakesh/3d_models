@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Gas - Telemetry Catalog Explorer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Nova Gas Theme Colors */
+            --primary: #f97316; /* Flame Orange */
+            --primary-hover: #ea580c;
+            --primary-light: #fff7ed;
+            --secondary: #0ea5e9; /* Gas Blue */
+            --bg-main: #f8f9fc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- Presentation Tooltip --- */
+        .presentation-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+            max-width: 280px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .presentation-tooltip.visible { opacity: 1; }
+        .explain-element { transition: all 0.2s; cursor: help; position: relative; border-radius: inherit; }
+        .explain-element:hover { outline: 2px solid var(--primary); outline-offset: -2px; box-shadow: inset 0 0 0 2px rgba(249, 115, 22, 0.1); z-index: 10; }
+
+        /* --- Full Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            flex-shrink: 0;
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            padding-left: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #facc15 180deg, #0ea5e9 360deg);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .logo-text { font-weight: 700; font-size: 18px; line-height: 1.2; color: var(--text-dark); }
+        .logo-text span { display: block; font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+        .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        
+        .nav-item > a {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px;
+            text-decoration: none; color: var(--text-muted); font-weight: 600;
+            border-radius: 8px; transition: all 0.2s;
+        }
+        .nav-item-left { display: flex; align-items: center; gap: 12px; }
+        .nav-item-icon { width: 24px; text-align: center; font-size: 16px; }
+
+        .nav-item > a:hover { background-color: var(--bg-main); color: var(--text-dark); }
+        .nav-item.active > a { background-color: var(--primary-light); color: var(--primary); }
+
+        /* Sub-menu Styling */
+        .sub-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-left: 44px; /* Align with text */
+            padding-left: 12px;
+            border-left: 1px solid var(--border);
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+        .sub-item a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .sub-item a:hover { color: var(--text-dark); background: var(--bg-main); }
+        .sub-item.active a { background-color: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .sub-item.active a::after {
+            content: '';
+            width: 6px; height: 6px; background: var(--primary); border-radius: 50%;
+        }
+
+        .user-profile-bottom {
+            display: flex; align-items: center; justify-content: space-between; padding: 12px;
+            border-top: 1px solid var(--border); margin-top: auto; cursor: pointer; border-radius: 12px;
+        }
+        .user-profile-bottom:hover { background: var(--bg-main); }
+        
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 32px; height: 32px; background-color: var(--primary-light); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fed7aa;}
+        .user-info-text h5 { font-size: 13px; color: var(--text-dark); }
+        .user-info-text p { font-size: 10px; color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;}
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevent scrolling body, scroll inner parts */
+        }
+
+        /* Top Header */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .catalog-selector {
+            display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 13px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .dropdown-btn {
+            display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white;
+            border: 1px solid var(--border); border-radius: 20px; font-size: 13px; cursor: pointer;
+            color: var(--text-main); font-weight: 600; transition: border-color 0.2s;
+        }
+        .dropdown-btn:hover { border-color: var(--primary); }
+        .dropdown-btn i.fa-globe { color: var(--secondary); }
+
+        .btn-new-session {
+            background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px;
+            font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn-new-session:hover { background: var(--primary-hover); }
+
+        /* Page Content & Split View */
+        .page-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 32px;
+            overflow: hidden;
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .page-title h1 {
+            font-size: 22px; color: var(--text-dark); display: flex; align-items: center; gap: 12px; margin-bottom: 8px; letter-spacing: -0.5px;
+        }
+        .page-title h1 i { color: #cbd5e1; }
+        .page-title p { color: var(--text-main); font-size: 14px; font-weight: 500;}
+
+        .btn-sync {
+            background: white; border: 1px solid #fed7aa; color: var(--primary); padding: 8px 16px;
+            border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+        }
+        .btn-sync:hover { background: var(--primary-light); }
+
+        /* Explorer Split Layout */
+        .explorer-layout {
+            flex: 1;
+            display: flex;
+            gap: 24px;
+            overflow: hidden;
+        }
+
+        /* Left Pane: Tree View */
+        .explorer-tree-pane {
+            width: 320px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .tree-section-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            margin-top: 16px;
+        }
+        .tree-section-header:first-child { margin-top: 0; }
+
+        .tree-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        
+        .tree-node { display: flex; flex-direction: column; gap: 4px; }
+        
+        .tree-node-header {
+            display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-radius: 6px;
+            font-size: 14px; font-weight: 600; color: var(--text-dark); transition: background 0.2s;
+        }
+        .tree-node-header:hover { background: white; }
+        .tree-node-header i.fa-caret-down { color: var(--text-muted); font-size: 12px; width: 12px; text-align: center;}
+        .tree-node-header i.fa-layer-group { color: #8b5cf6; } /* Purple icon for spaces */
+        .tree-node-header i.fa-database { color: var(--secondary); } /* Blue icon for DBs */
+
+        .tree-children {
+            margin-left: 20px;
+            border-left: 1px solid var(--border);
+            padding-left: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .tree-folder {
+            display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; border-radius: 6px;
+            font-size: 13px; font-weight: 600; color: var(--text-main);
+        }
+        .tree-folder:hover { background: white; }
+        .tree-folder i.fa-folder { color: #fbbf24; } /* Yellow folder */
+
+        .tree-file {
+            display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-left: 16px; cursor: pointer; border-radius: 6px;
+            font-size: 13px; font-weight: 500; color: var(--text-main);
+        }
+        .tree-file:hover { background: white; color: var(--primary); }
+        .tree-file.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .tree-file i { color: #cbd5e1; font-size: 14px;}
+
+        /* Right Pane: Empty State / Detail View */
+        .explorer-detail-pane {
+            flex: 1;
+            background: white;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--text-muted);
+            opacity: 0.5;
+            margin-bottom: 24px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- --- 1. Full Sidebar --- -->
+    <aside class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"></div>
+            <div class="logo-text">
+                NOVA GAS
+                <span>HIGH-TECH INTELLIGENCE</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-house"></i></div> Home</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-fire-flame-curved"></i></div> SparkAI</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-plug"></i></div> Connection</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+            
+            <!-- Expanded Menu Item -->
+            <li class="nav-item active explain-element" data-info="Expanded Data Menu: Accessing the metadata catalog.">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-database"></i></div> Data</div> <i class="fa-solid fa-chevron-down" style="font-size: 10px;"></i></a>
+            </li>
+            <!-- Nested Sub-menu -->
+            <ul class="sub-menu">
+                <li class="sub-item active"><a href="#">Catalog</a></li>
+                <li class="sub-item"><a href="#">SQL Runner</a></li>
+                <li class="sub-item"><a href="#">Semantic Layer</a></li>
+            </ul>
+
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-table-cells-large"></i></div> Workspace</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-shield-halved"></i></div> Govern</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+            <li class="nav-item">
+                <a href="#"><div class="nav-item-left"><div class="nav-item-icon"><i class="fa-solid fa-gear"></i></div> Platform</div> <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i></a>
+            </li>
+        </ul>
+
+        <div class="user-profile-bottom explain-element" data-info="Operator Profile Settings">
+            <div class="user-info">
+                <div class="user-avatar">R</div>
+                <div class="user-info-text">
+                    <h5>Rolex</h5>
+                    <p>Plant Manager</p>
+                </div>
+            </div>
+            <i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--text-muted);"></i>
+        </div>
+    </aside>
+
+    <!-- --- 2. Main Content --- -->
+    <main class="main-content">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="catalog-selector">
+                ACTIVE CATALOG: 
+                <button class="dropdown-btn explain-element" data-info="Switch between different plant databases or cloud catalogs.">
+                    <i class="fa-solid fa-globe"></i> All Catalogs (Federated) <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i>
+                </button>
+            </div>
+            <button class="btn-new-session">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> New Session
+            </button>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-wrapper">
+            
+            <div class="page-header">
+                <div class="page-title">
+                    <h1><i class="fa-solid fa-layer-group"></i> TELEMETRY CATALOG EXPLORER</h1>
+                    <p>Explore pipeline schemas and un-structured safety documents from the metadata registry.</p>
+                </div>
+                <button class="btn-sync explain-element" data-info="Manually trigger a metadata schema refresh from all connected SCADA endpoints.">
+                    <i class="fa-regular fa-clock"></i> Sync Catalog
+                </button>
+            </div>
+
+            <!-- Split Explorer View -->
+            <div class="explorer-layout">
+                
+                <!-- Left Pane: File Tree -->
+                <div class="explorer-tree-pane explain-element" data-info="Catalog Tree: Browse through structured tables and unstructured documents.">
+                    
+                    <div class="tree-section-header">PIPELINE LAKEHOUSE</div>
+                    <ul class="tree-list">
+                        <li class="tree-node">
+                            <div class="tree-node-header"><i class="fa-solid fa-caret-down"></i> <i class="fa-solid fa-layer-group"></i> Spaces</div>
+                            <div class="tree-children">
+                                
+                                <div class="tree-folder"><i class="fa-solid fa-folder"></i> Distribution Space</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_daily_flow</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_customers</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_billing_invoice</div>
+                                
+                                <div class="tree-folder" style="margin-top: 8px;"><i class="fa-solid fa-folder"></i> Pipeline Ops Space</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_compressor_logs</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_valve_status</div>
+                                
+                                <div class="tree-folder" style="margin-top: 8px;"><i class="fa-solid fa-folder"></i> Safety Space</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_leak_incidents</div>
+                                <div class="tree-file"><i class="fa-regular fa-file-lines"></i> tab_maintenance_tickets</div>
+
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="tree-section-header">PHYSICAL SOURCES</div>
+                    <ul class="tree-list">
+                        <li class="tree-node">
+                            <div class="tree-node-header"><i class="fa-solid fa-caret-down"></i> <i class="fa-solid fa-database"></i> PostgreSQL SCADA_metrics</div>
+                            <div class="tree-children">
+                                <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> scada_sensor_nodes</div>
+                                <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> scada_pressure_readings</div>
+                                <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> scada_temperature_logs</div>
+                                <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> scada_alerts_history</div>
+                                <div class="tree-file"><i class="fa-solid fa-table" style="color:#cbd5e1;"></i> hardware_maintenance_sched</div>
+                            </div>
+                        </li>
+                        
+                        <li class="tree-node" style="margin-top: 8px;">
+                            <div class="tree-node-header"><i class="fa-solid fa-caret-right" style="color:var(--text-muted); width:12px; text-align:center;"></i> <i class="fa-solid fa-database"></i> MongoDB Safety_Docs</div>
+                        </li>
+                    </ul>
+
+                </div>
+
+                <!-- Right Pane: Detail View / Empty State -->
+                <div class="explorer-detail-pane explain-element" data-info="Detail View: Clicking a table on the left will show schema columns, sample data, and metadata here.">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <p>Select a space table, physical source table, or document on the left Lakehouse explorer to view details.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Tooltip Logic for Presentation Mode ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'presentation-tooltip';
+            document.body.appendChild(tooltip);
+
+            const explainElements = document.querySelectorAll('.explain-element');
+            
+            explainElements.forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    const infoText = el.getAttribute('data-info');
+                    if(infoText) {
+                        tooltip.innerHTML = `<strong>Component Info:</strong><br>${infoText}`;
+                        tooltip.classList.add('visible');
+                    }
+                });
+
+                el.addEventListener('mousemove', (e) => {
+                    let x = e.pageX + 15;
+                    let y = e.pageY + 15;
+                    if (x + 280 > window.innerWidth) x = e.pageX - 295;
+                    if (y + 100 > window.innerHeight) y = e.pageY - 100;
+
+                    tooltip.style.left = `${x}px`;
+                    tooltip.style.top = `${y}px`;
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

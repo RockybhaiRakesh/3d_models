@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Gas - Custom Dashboards</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Nova Gas Theme Colors */
+            --primary: #f97316; /* Flame Orange */
+            --primary-hover: #ea580c;
+            --primary-light: #fff7ed;
+            --secondary: #0ea5e9; /* Gas Blue */
+            --bg-main: #f8f9fc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            
+            /* Code snippet & Tag colors */
+            --code-bg: #f8fafc;
+            --code-keyword: #2563eb;
+            --code-string: #16a34a;
+            --code-text: #475569;
+
+            --sidebar-width: 80px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- Presentation Tooltip --- */
+        .presentation-tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+            max-width: 280px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .presentation-tooltip.visible { opacity: 1; }
+        .explain-element { transition: all 0.2s; cursor: help; position: relative; }
+        .explain-element:hover { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: inherit; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15); z-index: 10; }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 0;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #facc15 180deg, #0ea5e9 360deg);
+            border-radius: 50%;
+            margin-bottom: 40px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .nav-item {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover { background-color: var(--bg-main); color: var(--primary); }
+        .nav-item.active { background-color: var(--primary-light); color: var(--primary); }
+
+        .user-avatar {
+            margin-top: auto;
+            width: 36px;
+            height: 36px;
+            background-color: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid #fed7aa;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Top Header */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .catalog-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+
+        .dropdown-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .dropdown-btn i.fa-globe { color: var(--secondary); }
+
+        .btn-new-session {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+            transition: background 0.2s;
+        }
+        .btn-new-session:hover { background: var(--primary-hover); }
+
+        /* Page Content */
+        .page-content {
+            padding: 32px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Hub Title Row */
+        .page-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title h1 {
+            font-size: 24px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .page-title h1 i { color: #cbd5e1; }
+        .page-title p { color: var(--text-muted); font-size: 14px; font-weight: 500;}
+
+        /* Hub Tabs */
+        .hub-tabs {
+            display: flex;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .hub-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .hub-tab:hover:not(.active) { background: var(--bg-main); }
+        
+        .hub-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+        }
+        .hub-tab i { font-size: 14px; }
+        .hub-tab:not(.active) i.fa-chart-pie { color: var(--secondary); }
+        .hub-tab:not(.active) i.fa-building-columns { color: var(--text-muted); }
+
+        /* Dashboard Sub-header */
+        .dashboard-subheader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-controls-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .btn-back {
+            background: #fdfaf6;
+            border: 1px solid #fed7aa;
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-back:hover { background: #ffedd5; }
+
+        .dashboard-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: 0.5px;
+        }
+        .dashboard-title i { color: var(--secondary); font-size: 20px;}
+
+        .widget-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Dashboard Widgets Grid */
+        .widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .widget-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .widget-tag { color: var(--primary); }
+        .widget-date { color: var(--text-muted); font-weight: 600; }
+
+        .widget-prompt {
+            font-size: 14px;
+            color: var(--text-dark);
+            font-weight: 600;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .widget-chart-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+        }
+
+        /* --- CSS Mock Charts --- */
+        
+        /* 1. Bar Chart Mock */
+        .mock-bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 220px;
+            padding: 20px 20px 40px 40px;
+            border-bottom: 2px solid var(--border);
+            border-left: 2px solid var(--border);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .y-axis {
+            position: absolute; left: -10px; top: 0; bottom: 40px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
+            font-size: 11px; color: var(--text-muted); font-weight: 500;
+        }
+        .y-axis span { transform: translateX(-100%); }
+        .y-axis-label {
+            position: absolute; left: -20px; top: -20px; font-size: 12px; color: var(--text-main); font-weight: 600; white-space: nowrap;
+        }
+        .mock-bar {
+            width: 45px; text-align: center; position: relative; border-radius: 4px 4px 0 0;
+            transition: opacity 0.2s; cursor: pointer;
+        }
+        .mock-bar:hover { opacity: 0.8; }
+        .mock-bar-label {
+            position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%) rotate(-15deg);
+            font-size: 11px; color: var(--text-muted); white-space: nowrap; font-weight: 500;
+        }
+        .mock-bar-value {
+            position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+            font-size: 12px; color: #cbd5e1; font-weight: 600;
+        }
+
+        /* 2. Donut Chart Mock */
+        .mock-donut-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px;
+        }
+        .mock-donut-chart {
+            width: 180px; height: 180px; border-radius: 50%;
+            background: conic-gradient(var(--secondary) 0% 65%, var(--primary) 65% 85%, var(--success) 85% 100%);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid var(--text-dark);
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .mock-donut-chart:hover { transform: scale(1.02); }
+        .mock-donut-inner {
+            width: 110px; height: 110px; background: var(--bg-card); border-radius: 50%;
+            border: 2px solid var(--text-dark);
+        }
+        .mock-donut-legend {
+            margin-top: 24px; display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); font-weight: 500;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-color { width: 16px; height: 10px; border-radius: 2px; border: 1px solid var(--text-dark); }
+
+        /* 3. Area Trend Chart Mock (SVG) */
+        .mock-area-chart {
+            height: 220px;
+            padding: 20px 0px 40px 40px;
+            border-bottom: 2px solid var(--border);
+            border-left: 2px solid var(--border);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .mock-area-chart svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        .x-axis-labels {
+            position: absolute; bottom: 10px; left: 40px; right: 0; display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-muted); font-weight: 500;
+        }
+
+        /* 4. Progress Bars Mock */
+        .mock-progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 220px;
+            justify-content: center;
+            padding: 0 20px 20px 20px;
+        }
+        .progress-item { display: flex; flex-direction: column; gap: 8px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-dark); }
+        .progress-header span:last-child { color: var(--text-muted); font-weight: 500; }
+        .progress-track { width: 100%; height: 12px; background: var(--bg-main); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        .progress-fill { height: 100%; border-radius: 6px; }
+
+        /* Widget Footer */
+        .widget-footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .widget-footer:hover { color: var(--primary); }
+        .widget-footer i { font-size: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo-icon"></div>
+        
+        <ul class="nav-menu">
+            <li class="nav-item"><i class="fa-solid fa-house"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-fire-flame-curved"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-plug"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-database"></i></li>
+            <li class="nav-item active explain-element" data-info="Dashboards module is currently active."><i class="fa-solid fa-table-cells-large"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-shield-halved"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-gear"></i></li>
+        </ul>
+
+        <div class="user-avatar explain-element" data-info="Rolex's Profile & Settings">R</div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="catalog-selector">
+                ACTIVE CATALOG: 
+                <button class="dropdown-btn">
+                    <i class="fa-solid fa-globe"></i> All Catalogs (Federated) <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i>
+                </button>
+            </div>
+            <button class="btn-new-session explain-element" data-info="Start a new SparkAI analysis session.">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> New Session
+            </button>
+        </header>
+
+        <div class="page-content">
+            
+            <!-- Hub Title Row -->
+            <div class="page-title-row">
+                <div class="page-title">
+                    <h1><i class="fa-solid fa-chart-simple"></i> SAVED REPORTS HUB</h1>
+                    <p>Browse and instantly load your saved SparkAI Charts and Telemetry BI reports.</p>
+                </div>
+                
+                <div class="hub-tabs explain-element" data-info="Toggle between auto-generated charts, BI tables, and custom dashboards.">
+                    <button class="hub-tab">
+                        <i class="fa-solid fa-chart-pie"></i> SparkAI Charts (147)
+                    </button>
+                    <button class="hub-tab">
+                        <i class="fa-solid fa-building-columns"></i> SCADA BI (100)
+                    </button>
+                    <button class="hub-tab active">
+                        <i class="fa-solid fa-display"></i> Custom Dashboards (4)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Sub-header -->
+            <div class="dashboard-subheader">
+                <div class="dashboard-controls-left">
+                    <button class="btn-back explain-element" data-info="Return to the main list of custom dashboards.">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Dashboards
+                    </button>
+                    <div class="dashboard-title">
+                        <i class="fa-solid fa-desktop"></i> DASHBOARD: NORTHERN SECTOR ANALYSIS
+                    </div>
+                </div>
+                <div class="widget-count">
+                    4 Widgets Loaded
+                </div>
+            </div>
+
+            <!-- Dashboard Widgets Grid -->
+            <div class="widgets-grid">
+                
+                <!-- Widget 1: Bar Chart -->
+                <div class="widget-card explain-element" data-info="Interactive Bar Chart generated by SparkAI.">
+                    <div class="widget-header">
+                        <span class="widget-tag">WIDGET #1 (SPARKAI ECHARTS)</span>
+                        <span class="widget-date">31/07/2026</span>
+                    </div>
+                    
+                    <div class="widget-prompt">
+                        Calculate average pressure drop for the top 5 critical zones in the Northern Sector
+                    </div>
+
+                    <div class="widget-chart-title">Top 5 Zones by Pressure Drop</div>
+                    
+                    <div class="mock-bar-chart">
+                        <div class="y-axis-label">Pressure Drop (PSI)</div>
+                        <div class="y-axis">
+                            <span>150</span><span>120</span><span>90</span><span>60</span><span>30</span><span>0</span>
+                        </div>
+                        
+                        <div class="mock-bar" style="height: 100%; background: var(--primary);">
+                            <span class="mock-bar-value">145</span>
+                            <span class="mock-bar-label">Zone Alpha</span>
+                        </div>
+                        <div class="mock-bar" style="height: 25%; background: var(--secondary);">
+                            <span class="mock-bar-value">35</span>
+                            <span class="mock-bar-label">Zone Beta</span>
+                        </div>
+                        <div class="mock-bar" style="height: 18%; background: var(--success);">
+                            <span class="mock-bar-value">26</span>
+                            <span class="mock-bar-label">Ind. Park</span>
+                        </div>
+                        <div class="mock-bar" style="height: 12%; background: #8b5cf6;">
+                            <span class="mock-bar-value">17</span>
+                            <span class="mock-bar-label">Port Hub</span>
+                        </div>
+                        <div class="mock-bar" style="height: 2%; background: #ec4899;">
+                            <span class="mock-bar-value">2</span>
+                            <span class="mock-bar-label">Res. Sector 4</span>
+                        </div>
+                    </div>
+
+                    <div class="widget-footer">
+                        <i class="fa-solid fa-play"></i> Show SQL Query
+                    </div>
+                </div>
+
+                <!-- Widget 2: Donut Chart -->
+                <div class="widget-card explain-element" data-info="Interactive Donut Chart generated by SparkAI.">
+                    <div class="widget-header">
+                        <span class="widget-tag">WIDGET #2 (SPARKAI ECHARTS)</span>
+                        <span class="widget-date">31/07/2026</span>
+                    </div>
+                    
+                    <div class="widget-prompt">
+                        Show me residential vs industrial vs commercial gas consumption distribution
+                    </div>
+
+                    <div class="widget-chart-title">Consumption by Sector</div>
+                    
+                    <div class="mock-donut-container">
+                        <div class="mock-donut-chart">
+                            <div class="mock-donut-inner"></div>
+                        </div>
+                        <div class="mock-donut-legend">
+                            <div class="legend-item"><div class="legend-color" style="background: var(--secondary);"></div> Residential</div>
+                            <div class="legend-item"><div class="legend-color" style="background: var(--primary);"></div> Industrial</div>
+                            <div class="legend-item"><div class="legend-color" style="background: var(--success);"></div> Commercial</div>
+                        </div>
+                    </div>
+
+                    <div class="widget-footer">
+                        <i class="fa-solid fa-play"></i> Show SQL Query
+                    </div>
+                </div>
+
+                <!-- Widget 3: Area/Line Trend Chart -->
+                <div class="widget-card explain-element" data-info="Time-series Trend Chart showing real-time pipeline telemetry.">
+                    <div class="widget-header">
+                        <span class="widget-tag">WIDGET #3 (SPARKAI ECHARTS)</span>
+                        <span class="widget-date">31/07/2026</span>
+                    </div>
+                    
+                    <div class="widget-prompt">
+                        Graph the main pipeline flow rate trend over the last 24 hours
+                    </div>
+
+                    <div class="widget-chart-title">Flow Rate 24h Trend (MMBtu)</div>
+                    
+                    <div class="mock-area-chart">
+                        <div class="y-axis-label" style="left: -20px; top: -20px; position: absolute; font-size: 12px; font-weight: 600;">MMBtu/hr</div>
+                        <div class="y-axis">
+                            <span>50k</span><span>40k</span><span>30k</span><span>20k</span><span>10k</span><span>0</span>
+                        </div>
+                        <svg viewBox="0 0 400 200" preserveAspectRatio="none">
+                            <!-- Gradient Area Fill -->
+                            <path d="M0,180 L50,150 L100,160 L150,90 L200,120 L250,50 L300,80 L350,30 L400,40 L400,200 L0,200 Z" fill="rgba(14, 165, 233, 0.15)" stroke="none"></path>
+                            <!-- Line Path -->
+                            <path d="M0,180 L50,150 L100,160 L150,90 L200,120 L250,50 L300,80 L350,30 L400,40" fill="none" stroke="var(--secondary)" stroke-width="4"></path>
+                            <!-- Data Points -->
+                            <circle cx="150" cy="90" r="5" fill="var(--bg-card)" stroke="var(--secondary)" stroke-width="2"></circle>
+                            <circle cx="250" cy="50" r="5" fill="var(--bg-card)" stroke="var(--secondary)" stroke-width="2"></circle>
+                            <circle cx="350" cy="30" r="5" fill="var(--primary)" stroke="var(--primary-light)" stroke-width="2"></circle> <!-- Peak Alert -->
+                        </svg>
+                        <div class="x-axis-labels">
+                            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>Now</span>
+                        </div>
+                    </div>
+
+                    <div class="widget-footer">
+                        <i class="fa-solid fa-play"></i> Show SQL Query
+                    </div>
+                </div>
+
+                <!-- Widget 4: Horizontal Progress Bars -->
+                <div class="widget-card explain-element" data-info="Progress Indicators comparing capacity limits across facilities.">
+                    <div class="widget-header">
+                        <span class="widget-tag">WIDGET #4 (SPARKAI ECHARTS)</span>
+                        <span class="widget-date">31/07/2026</span>
+                    </div>
+                    
+                    <div class="widget-prompt">
+                        Check active storage capacity levels across all primary facilities
+                    </div>
+
+                    <div class="widget-chart-title">Storage Facility Capacity</div>
+                    
+                    <div class="mock-progress-container">
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <span>Facility Alpha (North)</span>
+                                <span>88% Full</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: 88%; background: var(--primary);"></div>
+                            </div>
+                        </div>
+
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <span>Facility Beta (East Hub)</span>
+                                <span>62% Full</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: 62%; background: var(--secondary);"></div>
+                            </div>
+                        </div>
+
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <span>Facility Gamma (Reserve)</span>
+                                <span>35% Full</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: 35%; background: var(--success);"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget-footer">
+                        <i class="fa-solid fa-play"></i> Show SQL Query
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Tooltip Logic for Presentation Mode ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'presentation-tooltip';
+            document.body.appendChild(tooltip);
+
+            const explainElements = document.querySelectorAll('.explain-element');
+            
+            explainElements.forEach(el => {
+                el.addEventListener('mouseenter', (e) => {
+                    const infoText = el.getAttribute('data-info');
+                    if(infoText) {
+                        tooltip.innerHTML = `<strong>Component Info:</strong><br>${infoText}`;
+                        tooltip.classList.add('visible');
+                    }
+                });
+
+                el.addEventListener('mousemove', (e) => {
+                    let x = e.pageX + 15;
+                    let y = e.pageY + 15;
+                    // Prevent overflow off screen
+                    if (x + 280 > window.innerWidth) x = e.pageX - 295;
+                    if (y + 100 > window.innerHeight) y = e.pageY - 100;
+
+                    tooltip.style.left = `${x}px`;
+                    tooltip.style.top = `${y}px`;
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

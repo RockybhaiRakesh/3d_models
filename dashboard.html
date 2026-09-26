@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Gas - Saved Reports Hub</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Nova Gas Theme Colors */
+            --primary: #f97316; /* Flame Orange */
+            --primary-hover: #ea580c;
+            --primary-light: #fff7ed;
+            --secondary: #0ea5e9; /* Gas Blue */
+            --bg-main: #f8f9fc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            
+            /* Code snippet colors */
+            --code-bg: #f8fafc;
+            --code-keyword: #2563eb;
+            --code-string: #16a34a;
+            --code-text: #475569;
+
+            --sidebar-width: 80px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 0;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #facc15 180deg, #0ea5e9 360deg);
+            border-radius: 50%;
+            margin-bottom: 40px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .nav-item {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-main);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .user-avatar {
+            margin-top: auto;
+            width: 36px;
+            height: 36px;
+            background-color: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid #fed7aa;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Top Header */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .catalog-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+
+        .dropdown-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .dropdown-btn i.fa-globe { color: var(--secondary); }
+
+        .btn-new-session {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+            transition: background 0.2s;
+        }
+        .btn-new-session:hover { background: var(--primary-hover); }
+
+        /* Page Content */
+        .page-content {
+            padding: 32px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .page-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 32px;
+        }
+
+        .page-title h1 {
+            font-size: 24px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .page-title h1 i { color: var(--primary); }
+        .page-title p { color: var(--text-muted); font-size: 14px; }
+
+        /* Tabs */
+        .hub-tabs {
+            display: flex;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .hub-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .hub-tab:hover:not(.active) { background: var(--bg-main); }
+        
+        .hub-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+        }
+        .hub-tab i { font-size: 14px; }
+        .hub-tab:not(.active) i.fa-chart-pie { color: var(--secondary); }
+        .hub-tab:not(.active) i.fa-building-columns { color: var(--text-muted); }
+        .hub-tab:not(.active) i.fa-display { color: var(--primary); }
+
+        /* Reports Grid */
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 24px;
+        }
+
+        .report-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            border-color: #fed7aa;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .tag-pill {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .tag-pill span { color: var(--text-muted); font-weight: normal; margin: 0 2px;}
+
+        .card-date {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .card-title {
+            font-size: 15px;
+            color: var(--text-dark);
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.4;
+        }
+        .card-title i { color: var(--text-muted); font-size: 14px; margin-top: 3px;}
+
+        .sql-snippet {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            height: 120px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .sql-snippet code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--code-text);
+            white-space: pre-wrap;
+        }
+
+        .sql-keyword { color: var(--code-keyword); font-weight: 600; }
+        .sql-string { color: var(--code-string); }
+
+        .card-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: auto;
+        }
+
+        .btn-card {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .btn-outline {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid #fed7aa;
+        }
+        .btn-outline:hover { background: #ffedd5; }
+
+        .btn-solid {
+            background: var(--primary);
+            color: white;
+            border: 1px solid var(--primary);
+        }
+        .btn-solid:hover { background: var(--primary-hover); }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo-icon"></div>
+        
+        <ul class="nav-menu">
+            <li class="nav-item"><i class="fa-solid fa-house"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-fire-flame-curved"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-plug"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-database"></i></li>
+            <li class="nav-item active"><i class="fa-solid fa-table-cells-large"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-shield-halved"></i></li>
+            <li class="nav-item"><i class="fa-solid fa-gear"></i></li>
+        </ul>
+
+        <div class="user-avatar">R</div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="catalog-selector">
+                ACTIVE CATALOG: 
+                <button class="dropdown-btn">
+                    <i class="fa-solid fa-globe"></i> All Zones (Federated) <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i>
+                </button>
+            </div>
+            <button class="btn-new-session">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> New Session
+            </button>
+        </header>
+
+        <div class="page-content">
+            
+            <!-- Page Title & Tabs -->
+            <div class="page-title-row">
+                <div class="page-title">
+                    <h1><i class="fa-solid fa-chart-simple"></i> SAVED REPORTS HUB</h1>
+                    <p>Browse and instantly load your saved SparkAI Charts and Telemetry BI reports.</p>
+                </div>
+                
+                <div class="hub-tabs">
+                    <button class="hub-tab active">
+                        <i class="fa-solid fa-chart-pie"></i> SparkAI Charts (147)
+                    </button>
+                    <button class="hub-tab">
+                        <i class="fa-solid fa-building-columns"></i> SCADA BI (100)
+                    </button>
+                    <button class="hub-tab">
+                        <i class="fa-solid fa-display"></i> Custom Dashboards (2)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reports Grid -->
+            <div class="reports-grid">
+                
+                <!-- Card 1 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Telemetry DB <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:31</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Show zones with pipeline pressure lower than 15 PSI
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">SELECT</span> z.zone_code, z.zone_name, z.sector,
+COALESCE(<span class="sql-keyword">SUM</span>(s.current_psi), 0) <span class="sql-keyword">AS</span> net_pressure 
+<span class="sql-keyword">FROM</span> telemetry.pipeline.sensor_nodes z 
+<span class="sql-keyword">LEFT JOIN</span> telemetry.pipeline.pressure_ledger_entry s 
+<span class="sql-keyword">ON</span> z.node_id = s.node_id
+<span class="sql-keyword">WHERE</span> s.current_psi < 15
+<span class="sql-keyword">GROUP BY</span> z.zone_code, z.zone_name</code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Telemetry DB <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:30</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Show active leaks detected in the Northern Sector
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">SELECT</span> l.incident_id, l.severity, z.zone_name, 
+COALESCE(<span class="sql-keyword">SUM</span>(l.gas_loss_volume), 0) <span class="sql-keyword">AS</span> total_loss 
+<span class="sql-keyword">FROM</span> telemetry.incidents.leak_reports l 
+<span class="sql-keyword">JOIN</span> telemetry.pipeline.sensor_nodes z 
+<span class="sql-keyword">ON</span> l.zone_id = z.zone_id 
+<span class="sql-keyword">WHERE</span> l.status = <span class="sql-string">'ACTIVE'</span> 
+<span class="sql-keyword">AND</span> z.sector = <span class="sql-string">'Northern'</span></code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Snowflake <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:09</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Calculate growth percentage for top 5 industrial consumers
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">WITH</span> daily_consumption <span class="sql-keyword">AS</span> (
+  <span class="sql-keyword">SELECT</span> client_id, <span class="sql-keyword">CAST</span>(reading_date <span class="sql-keyword">AS DATE</span>) <span class="sql-keyword">AS</span> day,
+  <span class="sql-keyword">SUM</span>(total_mmbtu) <span class="sql-keyword">AS</span> daily_total 
+  <span class="sql-keyword">FROM</span> analytics.sales.daily_invoices 
+  <span class="sql-keyword">WHERE</span> client_type = <span class="sql-string">'INDUSTRIAL'</span> 
+  <span class="sql-keyword">GROUP BY</span> client_id, day
+)
+<span class="sql-keyword">SELECT</span> * <span class="sql-keyword">FROM</span> daily_consumption</code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Snowflake <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:07</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Show me top 5 zones by total gas volume distributed
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">SELECT</span> zone_name, <span class="sql-keyword">COUNT</span>(*) <span class="sql-keyword">AS</span> active_nodes, 
+<span class="sql-keyword">CAST</span>(<span class="sql-keyword">SUM</span>(total_volume) <span class="sql-keyword">AS DECIMAL</span>(18,2)) <span class="sql-keyword">AS</span> total_distributed 
+<span class="sql-keyword">FROM</span> analytics.pipeline.distribution_logs 
+<span class="sql-keyword">WHERE</span> status = <span class="sql-string">'ONLINE'</span> 
+<span class="sql-keyword">GROUP BY</span> zone_name 
+<span class="sql-keyword">ORDER BY</span> total_distributed <span class="sql-keyword">DESC LIMIT</span> 5</code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Snowflake <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:06</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Show me 2 months residential sales grouped by state
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">SELECT</span> state, <span class="sql-keyword">COUNT</span>(*) <span class="sql-keyword">AS</span> connection_count, 
+<span class="sql-keyword">SUM</span>(amount_billed) <span class="sql-keyword">AS</span> total_revenue 
+<span class="sql-keyword">FROM</span> analytics.sales.residential_orders 
+<span class="sql-keyword">WHERE</span> status <> <span class="sql-string">'disconnected'</span> 
+<span class="sql-keyword">AND</span> billing_date >= DATEADD(month, -2, CURRENT_DATE())
+<span class="sql-keyword">GROUP BY</span> state</code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <div class="checkbox"></div>
+                            <div class="tag-pill">Telemetry DB <span>/</span> SparkAI</div>
+                        </div>
+                        <div class="card-date">28 Jul, 11:03</div>
+                    </div>
+                    <div class="card-title">
+                        <i class="fa-regular fa-clock"></i> Can you show the last 10 maintenance alerts and severity
+                    </div>
+                    <div class="sql-snippet">
+                        <code><span class="sql-keyword">SELECT</span> m.alert_id, m.component, m.severity 
+<span class="sql-keyword">FROM</span> telemetry.scada.maintenance_logs m 
+<span class="sql-keyword">JOIN</span> telemetry.scada.hardware_variants v 
+<span class="sql-keyword">ON</span> m.hw_id = v.hardware_id 
+<span class="sql-keyword">ORDER BY</span> m.created_at <span class="sql-keyword">DESC LIMIT</span> 10</code>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-card btn-outline">Open in Studio</button>
+                        <button class="btn-card btn-solid">Add to Dashboard</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>
